@@ -1,0 +1,10 @@
+name: cassava-app
+account: jberry
+server: shinyapps.io
+appId: 94152
+bundleId: 456758
+url: https://jberry.shinyapps.io/cassava-app/
+when: 1463680789.578
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: data/dan_data_all.csv
