@@ -962,7 +962,7 @@ server <- function(input, output) {
     })
   
   output$casxam_boxplot_download_ui <- renderUI({
-    if(!is.null(input$casxam_sub_table_row_last_clicked)){
+    if(!is.null(input$casxam_sub_table_row_last_clicked) | !is.null(input$casxam_gene_sub_table_row_last_clicked)){
       downloadButton("casxam_boxplot_download", "Download Boxplot (png)")
     }
   })
