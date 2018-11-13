@@ -225,25 +225,39 @@ ui <- dashboardPage(skin="purple",
           )),
         uiOutput("table_out")
       ),
-      
       tabPanel("Cas-Xam",
         br(),
         fluidRow(
           box(width=10,title = "Select Subset",solidHeader = T,status = 'success',collapsible = TRUE,
-            column(width = 12,
-              column(width = 4,
-                selectInput("t1",width = 280,label = "Treatment 1",choices = unique(cd$sample_1), selected = "mock_8hr"),
-                actionButton("casxam_sub_table_button",label="Subset")
-              ),
-              column(width = 4,
-                selectInput("t2",width = 280,label = "Treatment 2",choices = unique(cd$sample_2), selected = "Xam668_8hr")
-              ),
-              column(width = 4,
-                numericInput("fc_cut",width = 150,label = "FC Threshold",value = 2)
+              tabsetPanel(id = "tabs",
+                          tabPanel("Subset by Treatment", value = "treatment_panel",
+                                   br(),
+                                   fluidRow(
+                                     column(width = 4,
+                                            selectInput("t1",width = 280,label = "Treatment 1",choices = unique(cd$sample_1), selected = "mock_8hr")
+                                     ),
+                                     column(width = 4,
+                                            selectInput("t2",width = 280,label = "Treatment 2",choices = unique(cd$sample_2), selected = "Xam668_8hr")
+                                     ),
+                                     column(width = 4,
+                                            numericInput("fc_cut",width = 150,label = "FC Threshold",value = 2)
+                                     )
+                                   ),
+                                   fluidRow(
+                                     column(width = 4,
+                                            actionButton("casxam_sub_table_button",label="Subset")
+                                     ) 
+                                   )
+                          ),
+                          tabPanel(value = "gene_panel", "Subset by Gene",
+                                   br(),
+                                   textInput('casxam_gene_search_text', label="ex. Manes.06G123400", value = "",width=350),
+                                   actionButton("casxam_gene_search_button",label="Subset")
+                          )
               )
-            )
           ),
-          uiOutput("cdbg_sub")
+          uiOutput("cdbg_sub"),
+          uiOutput("casxam_gene_sub")        
         )
       ),
       tabPanel("Contact Us",
@@ -802,37 +816,77 @@ server <- function(input, output) {
   }
   
   cdbg <- reactiveValues(data = NULL)
-  casxam_annot <- reactiveValues(data = NULL)
+  annot <- reactiveValues(data = NULL)
+  gene_search <- reactiveValues(data = NULL)
+  annot_search <- reactiveValues(data = NULL)
+  iterator <- reactiveValues(data = 0)
   
   observeEvent(input$casxam_sub_table_button, {
     cdbg$data <- casxam_f(cd, bg, des, input$t1, input$t2, input$fc_cut)
-    casxam_annot$data <- subset(at, at$gene_name %in% cdbg$data$gene)
+    annot$data <- subset(at, at$gene_name %in% cdbg$data$gene)
+  })
+  
+  observeEvent(input$casxam_gene_search_button, {
+    gene_search$data <- subset(cd, cd$gene %in% input$casxam_gene_search_text)
+    annot_search$data <- subset(at, at$gene_name %in% input$casxam_gene_search_text)
+    iterator$data <- iterator$data + 1
+  })
+  
+  observeEvent(input$tabs, {
+    iterator$data <- iterator$data + 1
   })
   
   output$cdbg_sub <- renderUI({
-    if(!is.null(cdbg$data)){
-      box(style = "overflow-y:scroll",width=12,title = "Subsetting Data",solidHeader = T,status = 'success',collapsible = TRUE,
-        br(),
-        p("Select a gene from the data table to view a boxplot of the treatment comparison."),
-        hr(),
-        dataTableOutput("casxam_sub_table"),
-        br(),
-        downloadButton("data_download","Download Data (tsv)"),
-        hr(),
-        column(width = 6,
-          plotOutput("cdbg_boxplot"),
-          uiOutput("casxam_boxplot_download_ui")
+    if(input$tabs == "treatment_panel"){
+      if(!is.null(cdbg$data)){
+        box(style = "overflow-y:scroll",width=12,title = "Subsetting by Treatment",solidHeader = T,status = 'success',collapsible = TRUE,
+            br(),
+            p("Select a gene from the data table to view a boxplot of the treatment comparison."),
+            hr(),
+            dataTableOutput("casxam_sub_table"),
+            br(),
+            downloadButton("casxam_data_download","Download Data (tsv)"),
+            hr(),
+            column(width = 6,
+                   plotOutput("cdbg_boxplot"),
+                   uiOutput("casxam_boxplot_download_ui")
+            )
         )
-      )
+      }
+    }
+    else if(input$tabs == "gene_panel"){  
+      if(!is.null(gene_search$data)){
+        box(style = "overflow-y:scroll",width=12,title = "Subsetting by Gene",solidHeader = T,status = 'success',collapsible = TRUE,
+            br(),
+            p("Select a gene from the data table to view a boxplot of the treatment comparison."),
+            hr(),
+            dataTableOutput("casxam_gene_sub_table"),
+            br(),
+            downloadButton("casxam_gene_data_download","Download Data (tsv)"),
+            hr(),
+            column(width = 6,
+                   plotOutput("cdbg_boxplot"),
+                   uiOutput("casxam_boxplot_download_ui")
+            )
+        )
+      }
     }
   })
   
-  output$casxam_sub_table <- renderDataTable({
-    datatable(casxam_annot$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
+  output$casxam_gene_sub_table <- renderDataTable({
+    datatable(annot_search$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
   })
   
-  casxam_gene_sel <-eventReactive(input$casxam_sub_table_row_last_clicked,{
-    temp <- casxam_annot$data[input$casxam_sub_table_row_last_clicked, "gene_name"]
+  output$casxam_sub_table <- renderDataTable({
+    datatable(annot$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
+  })
+  
+  casxam_gene_sel <- eventReactive((input$casxam_gene_sub_table_row_last_clicked + iterator$data) | (input$casxam_sub_table_row_last_clicked),{
+    if(input$tabs == "treatment_panel"){  
+      temp <- annot$data[input$casxam_sub_table_row_last_clicked, "gene_name"]
+    }else if(input$tabs == "gene_panel"){
+      temp <- annot_search$data[input$casxam_gene_sub_table_row_last_clicked, "gene_name"]
+    }
     box_dat <- bg[bg$gene_name == temp,]
     box_des <- des
     colnames(box_dat)[5:40] <- unlist(lapply(strsplit(colnames(box_dat)[5:40], "[.]"),function(i)i[2]))
@@ -849,29 +903,38 @@ server <- function(input, output) {
   })
   
   output$cdbg_boxplot <- renderPlot({
-    if(!is.null(input$casxam_sub_table_row_last_clicked)){
-      ggplot(data = casxam_gene_sel(), aes(x = treatment, y = FPKM))+
-        facet_grid(~time_f)+
-        geom_boxplot()+
-        theme_light()+
-        xlab("")+
-        ylab("FPKM")+
-        ggtitle(casxam_gene_sel()$gene_name[1])+
-        theme(axis.text = element_text(size = 12),
-          axis.title= element_text(size = 18))+
-        theme(plot.title = element_text(hjust = 0.5),
-          strip.background=element_rect(fill="gray50"),
-          strip.text.x=element_text(size=14,color="white"),
-          strip.text.y=element_text(size=14,color="white"))+
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    if(!is.null(as.character(input$casxam_sub_table_row_last_clicked)) | !is.null(as.character(input$casxam_gene_sub_table_row_last_clicked))){
+      if((input$tabs == "treatment_panel" & !is.null(input$casxam_sub_table_row_last_clicked) | (input$tabs == "gene_panel" & !is.null(input$casxam_gene_sub_table_row_last_clicked)))){ 
+        ggplot(data = casxam_gene_sel(), aes(x = treatment, y = FPKM))+
+          facet_grid(~time_f)+
+          geom_boxplot()+
+          theme_light()+
+          xlab("")+
+          ylab("FPKM")+
+          ggtitle(casxam_gene_sel()$gene_name[1])+
+          theme(axis.text = element_text(size = 12),
+                axis.title= element_text(size = 18))+
+          theme(plot.title = element_text(hjust = 0.5),
+                strip.background=element_rect(fill="gray50"),
+                strip.text.x=element_text(size=14,color="white"),
+                strip.text.y=element_text(size=14,color="white"))+
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      }
     }
   })
   
   #sDom  = '<"top">lrt<"bottom">ip',
-  output$data_download <- downloadHandler(
+  output$casxam_data_download <- downloadHandler(
     filename = function() {"cas_xam_2014_table.tsv"},
     content = function(file){
-      write.table(casxam_annot$data,file,row.names = FALSE, quote = FALSE,sep = "\t")
+      write.table(cdbg$data,file,row.names = FALSE, quote = FALSE,sep = "\t")
+    }
+  )
+  
+  output$casxam_gene_data_download <- downloadHandler(
+    filename = function() {"cas_xam_2014_table.tsv"},
+    content = function(file){
+      write.table(gene_search$data,file,row.names = FALSE, quote = FALSE,sep = "\t")
     }
   )
   
@@ -884,11 +947,11 @@ server <- function(input, output) {
       ylab("FPKM")+
       ggtitle(casxam_gene_sel()$gene_name[1])+
       theme(axis.text = element_text(size = 12),
-        axis.title= element_text(size = 18))+
+            axis.title= element_text(size = 18))+
       theme(plot.title = element_text(hjust = 0.5),
-        strip.background=element_rect(fill="gray50"),
-        strip.text.x=element_text(size=14,color="white"),
-        strip.text.y=element_text(size=14,color="white"))+
+            strip.background=element_rect(fill="gray50"),
+            strip.text.x=element_text(size=14,color="white"),
+            strip.text.y=element_text(size=14,color="white"))+
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
   })
   
