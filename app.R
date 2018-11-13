@@ -881,7 +881,7 @@ server <- function(input, output) {
     datatable(annot$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
   })
   
-  casxam_gene_sel <- eventReactive((input$casxam_gene_sub_table_row_last_clicked + iterator$data) | (input$casxam_sub_table_row_last_clicked),{
+  casxam_gene_sel <- eventReactive(c((input$casxam_gene_sub_table_row_last_clicked + iterator$data), (input$casxam_sub_table_row_last_clicked)),{
     if(input$tabs == "treatment_panel"){  
       temp <- annot$data[input$casxam_sub_table_row_last_clicked, "gene_name"]
     }else if(input$tabs == "gene_panel"){
