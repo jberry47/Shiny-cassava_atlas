@@ -816,14 +816,14 @@ server <- function(input, output) {
   }
   
   cdbg <- reactiveValues(data = NULL)
-  annot <- reactiveValues(data = NULL)
+  casxam_annot <- reactiveValues(data = NULL)
   casxam_gene_search <- reactiveValues(data = NULL)
   annot_search <- reactiveValues(data = NULL)
   iterator <- reactiveValues(data = 0)
   
   observeEvent(input$casxam_sub_table_button, {
     cdbg$data <- casxam_f(cd, bg, des, input$t1, input$t2, input$fc_cut)
-    annot$data <- subset(at, at$gene_name %in% cdbg$data$gene)
+    casxam_annot$data <- subset(at, at$gene_name %in% cdbg$data$gene)
   })
   
   observeEvent(input$casxam_gene_search_button, {
@@ -878,12 +878,12 @@ server <- function(input, output) {
   })
   
   output$casxam_sub_table <- renderDataTable({
-    datatable(annot$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
+    datatable(casxam_annot$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
   })
   
   casxam_gene_sel <- eventReactive(c((input$casxam_gene_sub_table_row_last_clicked + iterator$data), (input$casxam_sub_table_row_last_clicked)),{
     if(input$tabs == "treatment_panel"){  
-      temp <- annot$data[input$casxam_sub_table_row_last_clicked, "gene_name"]
+      temp <- casxam_annot$data[input$casxam_sub_table_row_last_clicked, "gene_name"]
     }else if(input$tabs == "gene_panel"){
       temp <- annot_search$data[input$casxam_gene_sub_table_row_last_clicked, "gene_name"]
     }
