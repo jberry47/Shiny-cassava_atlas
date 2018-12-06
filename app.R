@@ -817,7 +817,7 @@ server <- function(input, output) {
   
   cdbg <- reactiveValues(data = NULL)
   annot <- reactiveValues(data = NULL)
-  gene_search <- reactiveValues(data = NULL)
+  casxam_gene_search <- reactiveValues(data = NULL)
   annot_search <- reactiveValues(data = NULL)
   iterator <- reactiveValues(data = 0)
   
@@ -827,7 +827,7 @@ server <- function(input, output) {
   })
   
   observeEvent(input$casxam_gene_search_button, {
-    gene_search$data <- subset(cd, cd$gene %in% input$casxam_gene_search_text)
+    casxam_gene_search$data <- subset(cd, cd$gene %in% input$casxam_gene_search_text)
     annot_search$data <- subset(at, at$gene_name %in% input$casxam_gene_search_text)
     iterator$data <- iterator$data + 1
   })
@@ -855,7 +855,7 @@ server <- function(input, output) {
       }
     }
     else if(input$tabs == "gene_panel"){  
-      if(!is.null(gene_search$data)){
+      if(!is.null(casxam_gene_search$data)){
         box(style = "overflow-y:scroll",width=12,title = "Subsetting by Gene",solidHeader = T,status = 'success',collapsible = TRUE,
             br(),
             p("Select a gene from the data table to view a boxplot of the treatment comparison."),
@@ -934,7 +934,7 @@ server <- function(input, output) {
   output$casxam_gene_data_download <- downloadHandler(
     filename = function() {"cas_xam_2014_table.tsv"},
     content = function(file){
-      write.table(gene_search$data,file,row.names = FALSE, quote = FALSE,sep = "\t")
+      write.table(casxam_gene_search$data,file,row.names = FALSE, quote = FALSE,sep = "\t")
     }
   )
   
