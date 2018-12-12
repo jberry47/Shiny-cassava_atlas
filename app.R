@@ -838,7 +838,7 @@ server <- function(input, output) {
                              c("Xe_8hr",input$xe8hr),c("Xe_24hr",input$xe24hr), c("Xe_50",input$xe50hr), 
                              c("Xe(TAL20_Xam668)_8hr",input$xam668xe8hr), c("Xe(TAL20_Xam668)_24hr",input$xam668xe24hr),
                              c("Xe(TAL20_Xam668)_50hr",input$xam668xe50hr))
-    v_treat$data <- casxam_selections$data[,1][which(casxam_selections$data[,2] == "include")]
+    v_treat <- casxam_selections$data[,1][which(casxam_selections$data[,2] == "include")]
     at <- at[,c("annot", "gene_name", "model", "gene")]
     cdbg$data <- casxam_f(cd, bg, des, v_treat, input$fc_cut)
     colnames(cdbg$data)[2] <- "gene_name"
