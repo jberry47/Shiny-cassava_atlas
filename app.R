@@ -810,7 +810,7 @@ server <- function(input, output) {
   
   casxam_f <- function(cd, bg, des, v_treat, fc_cut){
     #sub <- cd[apply(cd, 1, function(i) all(c(i[5] %in% v_treat & i[6] %in% v_treat)) & (abs(as.numeric(i[10])) > fc_cut) & (as.numeric(i[13]) < 0.05)),]
-    sub <- cd[with(cd, (sample_1 %in% v_treat$data | sample_2 %in% v_treat$data) & (abs(as.numeric(log2.fold_change.)) > fc_cut) & (as.numeric(q_value) < 0.05)),]
+    sub <- cd[with(cd, (sample_1 %in% v_treat | sample_2 %in% v_treat) & (abs(as.numeric(log2.fold_change.)) > fc_cut) & (as.numeric(q_value) < 0.05)),]
     sub$log.qvalue <- -log10(sub$q_value)
     sel_srr <- des$Run[des$treatment %in% v_treat$data]
     test <- bg[,sapply(colnames(bg),function(i){unlist(lapply(strsplit(i, "[.]"),function(j)j[2]))}) %in% sel_srr]
@@ -840,7 +840,7 @@ server <- function(input, output) {
                              c("Xe(TAL20_Xam668)_50hr",input$xam668xe50hr))
     v_treat$data <- casxam_selections$data[,1][which(casxam_selections$data[,2] == "include")]
     at <- at[,c("annot", "gene_name", "model", "gene")]
-    cdbg$data <- casxam_f(cd, bg, des, v_treat$data, input$fc_cut)
+    cdbg$data <- casxam_f(cd, bg, des, v_treat, input$fc_cut)
     colnames(cdbg$data)[2] <- "gene_name"
     annot$data <- subset(at, at$gene_name %in% cdbg$data$gene_name)
     cdbg_annot$data <- join(cdbg$data, annot$data, by = "gene_name")
