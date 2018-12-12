@@ -232,22 +232,30 @@ ui <- dashboardPage(skin="purple",
               tabsetPanel(id = "tabs",
                           tabPanel("Subset by Treatment", value = "treatment_panel",
                                    br(),
-                                   fluidRow(
-                                     column(width = 4,
-                                            selectInput("t1",width = 280,label = "Treatment 1",choices = unique(cd$sample_1), selected = "mock_8hr")
-                                     ),
-                                     column(width = 4,
-                                            selectInput("t2",width = 280,label = "Treatment 2",choices = unique(cd$sample_2), selected = "Xam668_8hr")
-                                     ),
-                                     column(width = 4,
-                                            numericInput("fc_cut",width = 150,label = "FC Threshold",value = 2)
+                                   column(width = 6,
+                                         wellPanel(
+                                           column(4,
+                                                  tags$div(radioButtons("mock8hr", "8hr: Mock",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xam6688hr", "8hr: Xam668",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xe8hr", "8hr: Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xam668xe8hr", "8hr: Xam886 + Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude'))
+                                           ),
+                                           column(4,
+                                                  tags$div(radioButtons("mock24hr", "24hr: Mock",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xam66824hr", "24hr: Xam668",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xe24hr", "24hr: Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xam668xe24hr", "24hr: Xam886 + Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')) 
+                                           ),
+                                           column(4,
+                                                  tags$div(radioButtons("mock50hr", "50hr: Mock",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xam66850hr", "50hr: Xam668",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xe50hr", "50hr: Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
+                                                  tags$div(radioButtons("xam668xe50hr", "50hr: Xam886 + Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')) 
+                                           )
+                                         ),
+                                         numericInput("fc_cut", "Fold-change Cut-off", value = 2, width = 150),
+                                         actionButton("casxam_sub_table_button", "Subset")
                                      )
-                                   ),
-                                   fluidRow(
-                                     column(width = 4,
-                                            actionButton("casxam_sub_table_button",label="Subset")
-                                     ) 
-                                   )
                           ),
                           tabPanel(value = "gene_panel", "Subset by Gene",
                                    br(),
@@ -800,30 +808,42 @@ server <- function(input, output) {
   # for cas_xam
   #********************************************************************************************************************
   
-  casxam_f <- function(cd, bg, des, t1, t2, fc_cut){
-    if(nrow(cd[cd$sample_1 == t1 & cd$sample_2 == t2,]) == 0){
-      swap(t1,t2)
-    }
-    sub <- cd[(cd$sample_1 == t1) & (cd$sample_2 == t2) & (abs(cd$log2.fold_change) > fc_cut) & (cd$q_value < 0.05),]
+  casxam_f <- function(cd, bg, des, v_treat, fc_cut){
+    sub <- cd[apply(cd, 1, function(i) all(c(i[5] %in% v_treat & i[6] %in% v_treat)) & (abs(as.numeric(i[10])) > fc_cut) & (as.numeric(i[13]) < 0.05)),]
     sub$log.qvalue <- -log10(sub$q_value)
-    sel_srr <- des$Run[des$treatment %in% c(t1, t2)]
+    sel_srr <- des$Run[des$treatment %in% v_treat]
     test <- bg[,sapply(colnames(bg),function(i){unlist(lapply(strsplit(i, "[.]"),function(j)j[2]))}) %in% sel_srr]
     colnames(test) <- unlist(lapply(strsplit(colnames(test), "[.]"),function(i) paste(i[2], des[des$Run == i[2],"treatment"],sep = ".")))
     test <- cbind(bg$gene_name, test)
     colnames(test)[1] <- "gene"
-    out <- join(sub, test, by = "gene", type = "inner")
-    return(out)
-  }
+    cdbg <- join(sub, test, by = "gene", type = "inner")
+    cdbg <- cdbg[-c(1)]
+    return(cdbg)
   
   cdbg <- reactiveValues(data = NULL)
   casxam_annot <- reactiveValues(data = NULL)
   casxam_gene_search <- reactiveValues(data = NULL)
   annot_search <- reactiveValues(data = NULL)
+  cdbg_annot <- reactiveValues(data = NULL)
+  casxam_selections <- reactiveValues(data = NULL)
+  v_treat <- reactiveValues(data = NULL)
   iterator <- reactiveValues(data = 0)
   
   observeEvent(input$casxam_sub_table_button, {
-    cdbg$data <- casxam_f(cd, bg, des, input$t1, input$t2, input$fc_cut)
-    casxam_annot$data <- subset(at, at$gene_name %in% cdbg$data$gene)
+    id <- showNotification(h3("Subsetting data..."), duration = NULL)
+    casxam_selections$data <- rbind(c("mock_8hr",input$mock8hr), c("mock_24hr",input$mock24hr), c("mock_50hr",input$mock50hr), 
+                             c("Xam668_8hr",input$xam6688hr), c("Xam668_24hr",input$xam66824hr), c("Xam668_50hr",input$xam66850hr),
+                             c("Xe_8hr",input$xe8hr),c("Xe_24hr",input$xe24hr), c("Xe_50",input$xe50hr), 
+                             c("Xe(TAL20_Xam668)_8hr",input$xam668xe8hr), c("Xe(TAL20_Xam668)_24hr",input$xam668xe24hr),
+                             c("Xe(TAL20_Xam668)_50hr",input$xam668xe50hr))
+    v_treat <- casxam_selections$data[,1][which(casxam_selections$data[,2] == "include")]
+    at <- at[,c("annot", "gene_name", "model", "gene")]
+    cdbg$data <- casxam_f(cd, bg, des, v_treat, input$fc_cut)
+    colnames(cdbg$data)[2] <- "gene_name"
+    annot$data <- subset(at, at$gene_name %in% cdbg$data$gene_name)
+    cdbg_annot$data <- join(cdbg$data, annot$data, by = "gene_name")
+    cdbg_annot$data <- cdbg_annot$data[-c(6, 10, 11, 13, 14)]
+    removeNotification(id)
   })
   
   observeEvent(input$casxam_gene_search_button, {
@@ -878,12 +898,12 @@ server <- function(input, output) {
   })
   
   output$casxam_sub_table <- renderDataTable({
-    datatable(casxam_annot$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
+    datatable(cdbg_annot$data,rownames = F,selection = "single", options = list(pageLength = 10, autoWidth = F))
   })
   
   casxam_gene_sel <- eventReactive(c((input$casxam_gene_sub_table_row_last_clicked + iterator$data), (input$casxam_sub_table_row_last_clicked)),{
     if(input$tabs == "treatment_panel"){  
-      temp <- casxam_annot$data[input$casxam_sub_table_row_last_clicked, "gene_name"]
+      temp <- cdbg_annot$data[input$casxam_sub_table_row_last_clicked, "gene_name"]
     }else if(input$tabs == "gene_panel"){
       temp <- annot_search$data[input$casxam_gene_sub_table_row_last_clicked, "gene_name"]
     }
@@ -927,7 +947,7 @@ server <- function(input, output) {
   output$casxam_data_download <- downloadHandler(
     filename = function() {"cas_xam_2014_table.tsv"},
     content = function(file){
-      write.table(cdbg$data,file,row.names = FALSE, quote = FALSE,sep = "\t")
+      write.table(cdbg_annot$data,file,row.names = FALSE, quote = FALSE,sep = "\t")
     }
   )
   
@@ -966,6 +986,7 @@ server <- function(input, output) {
       downloadButton("casxam_boxplot_download", "Download Boxplot (png)")
     }
   })
+  }
 }
 
 shinyApp(ui, server)
