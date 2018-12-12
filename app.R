@@ -827,17 +827,17 @@ server <- function(input, output) {
   casxam_gene_search <- reactiveValues(data = NULL)
   annot_search <- reactiveValues(data = NULL)
   cdbg_annot <- reactiveValues(data = NULL)
-  casxam_selections <- reactiveValues(data = NULL)
   iterator <- reactiveValues(data = 0)
   
   observeEvent(input$casxam_sub_table_button, {
+    print("test")
     id <- showNotification(h3("Subsetting data..."), duration = NULL)
-    casxam_selections$data <- rbind(c("mock_8hr",input$mock8hr), c("mock_24hr",input$mock24hr), c("mock_50hr",input$mock50hr), 
+    casxam_selections <- rbind(c("mock_8hr",input$mock8hr), c("mock_24hr",input$mock24hr), c("mock_50hr",input$mock50hr), 
                              c("Xam668_8hr",input$xam6688hr), c("Xam668_24hr",input$xam66824hr), c("Xam668_50hr",input$xam66850hr),
                              c("Xe_8hr",input$xe8hr),c("Xe_24hr",input$xe24hr), c("Xe_50",input$xe50hr), 
                              c("Xe(TAL20_Xam668)_8hr",input$xam668xe8hr), c("Xe(TAL20_Xam668)_24hr",input$xam668xe24hr),
                              c("Xe(TAL20_Xam668)_50hr",input$xam668xe50hr))
-    v_treat <- casxam_selections$data[,1][which(casxam_selections$data[,2] == "include")]
+    v_treat <- casxam_selections[,1][which(casxam_selections[,2] == "include")]
     at1 <- at[,c("annot", "gene_name", "model", "gene")]
     cdbg$data <- casxam_f(cd, bg, des, v_treat, input$fc_cut)
     colnames(cdbg$data)[2] <- "gene_name"
