@@ -251,10 +251,10 @@ ui <- dashboardPage(skin="purple",
                                                   tags$div(radioButtons("xam66850hr", "50hr: Xam668",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
                                                   tags$div(radioButtons("xe50hr", "50hr: Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
                                                   tags$div(radioButtons("xam668xe50hr", "50hr: Xam886 + Xe",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')) 
-                                           )
-                                         ),
+                                           ),
                                          numericInput("fc_cut", "Fold-change Cut-off", value = 2, width = 150),
                                          actionButton("casxam_sub_table_button", "Subset")
+                                         )
                                      )
                           ),
                           tabPanel(value = "gene_panel", "Subset by Gene",
