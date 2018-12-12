@@ -228,11 +228,11 @@ ui <- dashboardPage(skin="purple",
       tabPanel("Cas-Xam",
         br(),
         fluidRow(
-          box(width=10,title = "Select Subset",solidHeader = T,status = 'success',collapsible = TRUE,
+          box(width=6,title = "Select Subset",solidHeader = T,status = 'success',collapsible = TRUE,
               tabsetPanel(id = "tabs",
                           tabPanel("Subset by Treatment", value = "treatment_panel",
                                    br(),
-                                   column(width = 6,
+                                   column(width = 12,
                                          wellPanel(
                                            column(4,
                                                   tags$div(radioButtons("mock8hr", "8hr: Mock",c("Include" = "include", "Exclude"="exclude"),selected = 'exclude')),
