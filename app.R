@@ -830,19 +830,18 @@ server <- function(input, output) {
   iterator <- reactiveValues(data = 0)
   
   observeEvent(input$casxam_sub_table_button, {
-    print("test")
     id <- showNotification(h3("Subsetting data..."), duration = NULL)
     casxam_selections <- rbind(c("mock_8hr",input$mock8hr), c("mock_24hr",input$mock24hr), c("mock_50hr",input$mock50hr), 
-                             c("Xam668_8hr",input$xam6688hr), c("Xam668_24hr",input$xam66824hr), c("Xam668_50hr",input$xam66850hr),
-                             c("Xe_8hr",input$xe8hr),c("Xe_24hr",input$xe24hr), c("Xe_50",input$xe50hr), 
-                             c("Xe(TAL20_Xam668)_8hr",input$xam668xe8hr), c("Xe(TAL20_Xam668)_24hr",input$xam668xe24hr),
-                             c("Xe(TAL20_Xam668)_50hr",input$xam668xe50hr))
+      c("Xam668_8hr",input$xam6688hr), c("Xam668_24hr",input$xam66824hr), c("Xam668_50hr",input$xam66850hr),
+      c("Xe_8hr",input$xe8hr),c("Xe_24hr",input$xe24hr), c("Xe_50",input$xe50hr), 
+      c("Xe(TAL20_Xam668)_8hr",input$xam668xe8hr), c("Xe(TAL20_Xam668)_24hr",input$xam668xe24hr),
+      c("Xe(TAL20_Xam668)_50hr",input$xam668xe50hr))
     v_treat <- casxam_selections[,1][which(casxam_selections[,2] == "include")]
     at1 <- at[,c("annot", "gene_name", "model", "gene")]
     cdbg$data <- casxam_f(cd, bg, des, v_treat, input$fc_cut)
     colnames(cdbg$data)[2] <- "gene_name"
-    annot$data <- subset(at1, at1$gene_name %in% cdbg$data$gene_name)
-    cdbg_annot$data <- join(cdbg$data, annot$data, by = "gene_name")
+    casxam_annot$data <- at1[at1$gene_name %in% cdbg$data$gene_name,]
+    cdbg_annot$data <- join(cdbg$data, casxam_annot$data, by = "gene_name")
     cdbg_annot$data <- cdbg_annot$data[-c(6, 10, 11, 13, 14)]
     removeNotification(id)
   })
