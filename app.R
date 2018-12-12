@@ -819,6 +819,7 @@ server <- function(input, output) {
     cdbg <- join(sub, test, by = "gene", type = "inner")
     cdbg <- cdbg[-c(1)]
     return(cdbg)
+  }
   
   cdbg <- reactiveValues(data = NULL)
   casxam_annot <- reactiveValues(data = NULL)
@@ -986,7 +987,6 @@ server <- function(input, output) {
       downloadButton("casxam_boxplot_download", "Download Boxplot (png)")
     }
   })
-  }
 }
 
 shinyApp(ui, server)
