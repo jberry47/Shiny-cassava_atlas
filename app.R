@@ -828,7 +828,6 @@ server <- function(input, output) {
   annot_search <- reactiveValues(data = NULL)
   cdbg_annot <- reactiveValues(data = NULL)
   casxam_selections <- reactiveValues(data = NULL)
-  v_treat <- reactiveValues(data = NULL)
   iterator <- reactiveValues(data = 0)
   
   observeEvent(input$casxam_sub_table_button, {
@@ -839,10 +838,10 @@ server <- function(input, output) {
                              c("Xe(TAL20_Xam668)_8hr",input$xam668xe8hr), c("Xe(TAL20_Xam668)_24hr",input$xam668xe24hr),
                              c("Xe(TAL20_Xam668)_50hr",input$xam668xe50hr))
     v_treat <- casxam_selections$data[,1][which(casxam_selections$data[,2] == "include")]
-    at <- at[,c("annot", "gene_name", "model", "gene")]
+    at1 <- at[,c("annot", "gene_name", "model", "gene")]
     cdbg$data <- casxam_f(cd, bg, des, v_treat, input$fc_cut)
     colnames(cdbg$data)[2] <- "gene_name"
-    annot$data <- subset(at, at$gene_name %in% cdbg$data$gene_name)
+    annot$data <- subset(at1, at1$gene_name %in% cdbg$data$gene_name)
     cdbg_annot$data <- join(cdbg$data, annot$data, by = "gene_name")
     cdbg_annot$data <- cdbg_annot$data[-c(6, 10, 11, 13, 14)]
     removeNotification(id)
