@@ -818,7 +818,7 @@ server <- function(input, output) {
     test <- cbind(bg$gene_name, test)
     colnames(test)[1] <- "gene"
     cdbg <- join(sub, test, by = "gene", type = "inner")
-    cdbg <- cdbg[-c(1)]
+    cdbg <- cdbg[,-c(1)]
     return(cdbg)
   }
   
