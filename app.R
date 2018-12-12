@@ -812,7 +812,7 @@ server <- function(input, output) {
     #sub <- cd[apply(cd, 1, function(i) all(c(i[5] %in% v_treat & i[6] %in% v_treat)) & (abs(as.numeric(i[10])) > fc_cut) & (as.numeric(i[13]) < 0.05)),]
     sub <- cd[with(cd, (sample_1 %in% v_treat | sample_2 %in% v_treat) & (abs(as.numeric(log2.fold_change.)) > fc_cut) & (as.numeric(q_value) < 0.05)),]
     sub$log.qvalue <- -log10(sub$q_value)
-    sel_srr <- des$Run[des$treatment %in% v_treat$data]
+    sel_srr <- des$Run[des$treatment %in% v_treat]
     test <- bg[,sapply(colnames(bg),function(i){unlist(lapply(strsplit(i, "[.]"),function(j)j[2]))}) %in% sel_srr]
     colnames(test) <- unlist(lapply(strsplit(colnames(test), "[.]"),function(i) paste(i[2], des[des$Run == i[2],"treatment"],sep = ".")))
     test <- cbind(bg$gene_name, test)
