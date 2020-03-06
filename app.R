@@ -101,13 +101,16 @@ ui <- dashboardPage(skin="purple",
             h3("Background"),
             p("This tool is brought to you by members of the",a(href="http://www.beckybartlab.org/",target='_blank',"Bart Lab"),"at the Donald Danforth Plant Science 
               Center in St. Louis MO. For more details on this tool and the RNAseq data used to generate 
-              these analyses please read our paper",a("found here",target="_blank",href="http://onlinelibrary.wiley.com/doi/10.1111/nph.14443/full"),"."),
+              these analyses please read our paper:"),
+            p("
+              Wilson, M.C., Mutka, A.M., Hummel, A.W., Berry, J., Chauhan, R.D., Vijayaraghavan, A., Taylor, N.J., Voytas, D.F., Chitwood, D.H. and Bart, R.S. (2017).",tags$b("Gene expression atlas for the food security crop cassava."),"New Phytol, 213: 1632-1641. doi:
+              ",a("10.1111/nph.14443",target="_blank",href="http://onlinelibrary.wiley.com/doi/10.1111/nph.14443/full"),"."),
             p("Below you will find information on how to use two different gene expression tools that can
               be accessed through the tabs above. The Tissue-Specific Heatmap tool is designed to allow 
               users to visualize gene expression patterns for any gene of interest. The GeneFinder tool 
               allows users to specify a desired gene expression pattern and retrieve candidates. Questions 
               should be directed to jberry@danforthcenter.org and/or rbart@danforthcenter.org"),
-            p("This webpage is created using open-source R Shiny developement tools and the souce code to this page is available",a("here",target='_blank',href="cassava_atlas_source.txt")),
+            p("This webpage is created using open-source R Shiny developement tools and the souce code to this page is available",a("here",target='_blank',href="https://github.com/jberry47/Shiny-cassava_atlas")),
             p("This work was funded by the Bill and Melinda Gates Foundation.")
             )
             )
@@ -436,20 +439,20 @@ server <- function(input, output) {
           downloadButton("downloadPlot","Download Heatmap (PNG)")
         )
       ),
-      box(width = 6,height=650,title = "FPKM Boxplot", status = "info", solidHeader = TRUE,
-        plotOutput("heat_boxplot"),
-        br(),
-        br(),
-        br(),
-        br(),
-        br(),
-        hr(),
-        downloadButton("heat_box","Download Boxplot (PNG)")
+      box(width = 6,height=675,title = "FPKM Boxplot", status = "info", solidHeader = TRUE,
+        column(width=12,
+               plotOutput("heat_boxplot")
+        ),
+        column(width=12,
+               br(),br(),br(),br(),
+               uiOutput("Heat_slider"),
+               downloadButton("heat_box","Download Boxplot (PNG)")
+        )
       )
             )
   })
   
-  Heat_boxplot <- reactive({
+  Heat_boxplot_data <- reactive({
     s <- make_heat()
     sub <- genefinder_data[as.numeric(s),]
     my_scale <- input$transform
@@ -464,15 +467,30 @@ server <- function(input, output) {
     sub1$group <- rep(row.names(my_points),each=3)[-33]
     names(sub1) <- c("FPKM","Group")
     sub1$Group <- ordered(sub1$Group,levels=c("OES","FEC","Fibrous.Root","Storage.Root","RAM","SAM","Leaf","Lateral.Bud","Mid.Vein","Petiole","Stem"))
+    sub1$gene <- sub$gene
+    sub1
+  })
+  output$Heat_slider <- renderUI({
+    sub1 <- Heat_boxplot_data()
+    mr <- diff(range(sub1$FPKM))
+    sliderInput("box_range", "Y-axis Range:",
+                min = max(c(min(sub1$FPKM)-0.5*mr,0)), max = max(sub1$FPKM)+0.5*mr,
+                value = c(max(c(min(sub1$FPKM)-0.1*mr,0)), max(sub1$FPKM)+0.1*mr))
+  })
+  Heat_boxplot <- reactive({
+    sub1 <- Heat_boxplot_data()
+    my_scale <- input$transform
+    my_range <- input$box_range
     ggplot(sub1, aes(x=Group, y=FPKM,fill=Group))+
-      ggtitle(paste(sub$gene,": FPKM Distribution"))+
+      ggtitle(paste(sub1$gene[1],": FPKM Distribution"))+
       geom_boxplot(size=1,fatten=0) + 
       theme_bw()+ 
       theme(axis.text.x=element_text(angle=45, hjust=1), legend.position="none")  + 
+      coord_cartesian(ylim = c(my_range[1],my_range[2]))+
       ylab(paste(my_scale,"FPKM"))+
       xlab("Tissue Type")+
       theme(axis.text = element_text(size = 14),
-        axis.title= element_text(size = 18))+
+            axis.title= element_text(size = 18))+
       scale_fill_manual(values=c("#33a02c","#b2df8a","#1f78b4","#a6cee3","#6a3d9a","#cab2d6","#ffff99","#ff7f00","#fdbf6f","#e31a1c","#fb9a99"))
   })
   output$heat_boxplot <- renderPlot(height=500,{
