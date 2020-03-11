@@ -473,20 +473,21 @@ server <- function(input, output) {
   output$Heat_slider <- renderUI({
     sub1 <- Heat_boxplot_data()
     mr <- diff(range(sub1$FPKM))
-    sliderInput("box_range", "Y-axis Range:",
-                min = max(c(min(sub1$FPKM)-0.5*mr,0)), max = max(sub1$FPKM)+0.5*mr,
-                value = c(max(c(min(sub1$FPKM)-0.1*mr,0)), max(sub1$FPKM)+0.1*mr))
+    numericInput("box_yrange", "Y-axis Max:", width="20%",
+                value = max(sub1$FPKM)+0.5*mr)
   })
   Heat_boxplot <- reactive({
     sub1 <- Heat_boxplot_data()
+    mr <- diff(range(sub1$FPKM))
     my_scale <- input$transform
-    my_range <- input$box_range
+    maxval <- input$box_yrange
+    minval <- max(c(0,min(sub1$FPKM,na.rm=T)-0.5*mr))
     ggplot(sub1, aes(x=Group, y=FPKM,fill=Group))+
       ggtitle(paste(sub1$gene[1],": FPKM Distribution"))+
       geom_boxplot(size=1,fatten=0) + 
       theme_bw()+ 
       theme(axis.text.x=element_text(angle=45, hjust=1), legend.position="none")  + 
-      coord_cartesian(ylim = c(my_range[1],my_range[2]))+
+      coord_cartesian(ylim = c(minval,maxval))+
       ylab(paste(my_scale,"FPKM"))+
       xlab("Tissue Type")+
       theme(axis.text = element_text(size = 14),
