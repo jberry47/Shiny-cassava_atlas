@@ -13,9 +13,11 @@ library(reshape2)
 library(plyr)
 
 all.rna <- read.table("data/Rshiny_app_dataset_v2.txt",header=T,quote="",sep="\t")
-
 rnaseq <- data.frame(all.rna$gene,all.rna$FEC,all.rna$Fibrous.Root,all.rna$Lateral.Bud,all.rna$Leaf,all.rna$Mid.Vein,all.rna$OES,all.rna$Petiole,all.rna$RAM,all.rna$SAM,all.rna$Stem,all.rna$Storage.Root)
 colnames(rnaseq) <- c("gene","FEC",'Fibrous.Root','Lateral.Bud','Leaf','Mid.Vein','OES','Petiole','RAM','SAM','Stem','Storage.Root')
+
+all.rna_p0 <- read.table("data/gf_data_p0.txt",stringsAsFactors = F,header = T,sep = "\t")
+rnaseq_p0 <- all.rna_p0[,c("gene","FEC",'Fibrous.Root','Lateral.Bud','Leaf','Mid.Vein','OES','Petiole','RAM','SAM','Stem','Storage.Root')]
 
 genefinder_data1 <- read.table("data/Rshiny_app_dataset_v3_withreps.txt",header=T,quote="",sep=",")
 genefinder_data1 <- genefinder_data1[,1:39]
@@ -23,9 +25,15 @@ genefinder_data1$go <- all.rna$go
 genefinder_data <- data.frame(genefinder_data1[,34],genefinder_data1[,1:32])
 names(genefinder_data) <- c("gene",names(genefinder_data)[-1])
 
+genefinder_data1_p0 <- read.table("data/gf_data_p0_withreps.txt",header=T,quote="",sep="\t")
+genefinder_data1_p0$go <- all.rna_p0$go
+genefinder_data_p0 <- data.frame(genefinder_data1_p0$gene,genefinder_data1_p0[,1:32])
+names(genefinder_data_p0) <- c("gene",names(genefinder_data_p0)[-1])
 
 annot <- data.frame(seq(from=1,to=nrow(all.rna),by=1),all.rna$gene,all.rna$locus,all.rna$go,all.rna$annot)
 colnames(annot) <- c("index","gene","locus","go","annot")
+annot_p0 <- data.frame(seq(from=1,to=nrow(all.rna_p0),by=1),all.rna_p0$gene,all.rna_p0$go,all.rna_p0$annot)
+colnames(annot_p0) <- c("index","gene","go","annot")
 
 overlap <- read.table("data/overlapping.txt")
 issues <- data.frame(seq(from=1,to=nrow(all.rna),by=1),all.rna$gene,all.rna$possible_issues)
@@ -33,6 +41,15 @@ issues$overlap<- all.rna$gene %in% overlap$V1
 colnames(issues) <- c("index","gene","possible_issues","overlap")
 issues$possible_issues <- as.logical(issues$possible_issues)
 annot$status <- as.character(issues[,3] | issues[,4])
+
+#overlap_p0 <- read.table("data/overlapping.txt")
+issues_p0 <- data.frame(seq(from=1,to=nrow(all.rna_p0),by=1),all.rna_p0$gene)
+issues_p0$possible_issues <- FALSE
+#issues$overlap<- all.rna$gene %in% overlap$V1
+issues_p0$overlap <- FALSE
+colnames(issues_p0) <- c("index","gene","possible_issues","overlap")
+issues_p0$possible_issues <- as.logical(issues_p0$possible_issues)
+annot_p0$status <- as.character(issues_p0$possible_issues | issues_p0$overlap)
 
 pcascores <- read.csv("data/som_pca.csv",header=T)
 pcascores$node <- all.rna$node
@@ -75,6 +92,7 @@ ui <- dashboardPage(skin="purple",
       .tabbable > .nav > li > a[data-value='Cas-Xam'] {background-color: #676767;   color:white}
       .tabbable > .nav > li > a[data-value='Plot'] {background-color: #676767;   color:white}
       .tabbable > .nav > li > a[data-value='Tissue-Specific Heatmap'] {background-color: #676767;  color:white}
+      .tabbable > .nav > li > a[data-value='Tissue-Specific Phased Heatmap'] {background-color: #676767;  color:white}
       .tabbable > .nav > li > a[data-value='Gene Finder'] {background-color: #676767; color:white}
       .tabbable > .nav > li > a[data-value='Contact Us'] {background-color: #676767; color:white}
       .tabbable > .nav > li[class=active]    > a {background-color: #444444; color:white}
@@ -196,6 +214,34 @@ ui <- dashboardPage(skin="purple",
           )
         ),
         uiOutput('heat_out')
+      ),
+      tabPanel("Tissue-Specific Phased Heatmap", 
+               fixedRow(
+                 br(),
+                 box(style = "overflow-y:scroll",width=10,title = "Generation Guide",solidHeader = T,status = 'success',collapsible = TRUE,
+                     h4("Step 1: Enter Search Terms"),
+                     column(5,
+                            p("Multiple terms separated by a comma is allowed"),
+                            textInput('gene_search_text_p0', label="ex: zinc finger,b-box, GO:0005515", value = "",width=550),
+                            tags$div(class = "multicol", radioButtons("heat_radio_p0", "Logical",c("And" = "AND", "Or"="OR"),selected = 'AND'))
+                     ),
+                     br(),
+                     br(),
+                     br(),
+                     actionButton("gene_search_button_p0",label="Search",inline=TRUE),
+                     h6("To search, click the search button"),
+                     br(),
+                     hr(),
+                     h4("Step 2: Select a gene by clicking it"),
+                     dataTableOutput("gene_search_table_p0"),
+                     uiOutput("download_found_genes_p0"),
+                     uiOutput('is.problem_p0'),
+                     hr(),
+                     h4("Step 3: Make Heatmap"),
+                     uiOutput('ready_for_heat_p0')
+                 )
+               ),
+               uiOutput('heat_out_p0')
       ),
       tabPanel("Gene Finder",
         br(),
@@ -335,7 +381,7 @@ server <- function(input, output) {
   )
   
   #********************************************************************************************************************
-  # for heatmap
+  # for  tissue-specific heatmap
   #********************************************************************************************************************
   output$download_found_genes <- renderUI({
     s <- gene_search()
@@ -709,6 +755,305 @@ server <- function(input, output) {
   },server = T)
   
   
+  #********************************************************************************************************************
+  # for phased heatmap
+  #********************************************************************************************************************
+  output$download_found_genes_p0 <- renderUI({
+    s <- gene_search_p0()
+    downloadButton("get_all_data_p0","Get all data for these genes (CSV)")
+  })
+  output$is.problem_p0 <- renderUI({
+    s <- gene_sel_p0()
+    if(length(s)==0){
+      return()
+    }else{
+      sub <- issues[as.numeric(s),]
+      if(sub$possible_issues == 'True'){
+        tags$div(class = "warning",p("WARNING: During assembly, multiple gene loci aligned to this gene name"))
+      }
+      if(sub$overlap == TRUE){
+        tags$div(class = "warning",p("WARNING: This gene is called with low confidence"))
+      }
+      else{
+        return()
+      }
+    }
+  })
+  
+  output$ready_for_heat_p0 <- renderUI({
+    s <- gene_search_p0()
+    if(s==""){
+      return()
+    }else if(is.null(input$gene_search_table_p0_rows_selected)){
+      return()
+    }
+    else{
+      actionButton("make_heatmap_gene_p0","Make heatmap with selected gene")
+    }
+  })
+  
+  gene_sel_p0 <-reactive({
+    sub <- heat_sub_data_p0()
+    sub[input$gene_search_table_p0_rows_selected,"index"]
+  })
+  
+  make_heat_p0<- eventReactive(input$make_heatmap_gene_p0,{
+    gene_sel_p0()
+  })
+  
+  output$heat_out_p0 <- renderUI({
+    make_heat_p0()
+    fixedRow(
+      column(4,
+             box(width=12,title="Download Raw Data",solidHeader = T,status = "success",
+                 downloadButton("downloadHeatFPKM_p0","Download All Data for Selected Gene (CSV)")
+             ),
+             box(width=12,title = "Heatmap Adjustments",status='success',solidHeader = T,
+                 tags$div(class = "multicol", radioButtons("color_sel_p0", "Color for Heatmap Gradient",c("Blue" = "blue", "Red"="red","Purple"="purple","Orange"='orange',"Green"="green","Magenta"='magenta'),selected = 'green')),
+                 hr(),
+                 tags$div(class = "multicol", radioButtons("transform_p0", "Transform",c('Identity'='identity',"Log10" = "log10", "Log2"="log2"),selected = 'identity')),
+                 hr(),
+                 textInput("scale_max_p0","Scale Max",value="",width = 100)
+             )
+             ,
+      ),
+      column(8,
+             box(style = "overflow-y:scroll",width=10,title = "Tissue Specific Expression", status = "info", solidHeader = TRUE,
+          column(12,
+                 p("Mouse over the circles to see mean FPKM value"),
+                 hr(),
+                 plotOutput("plot1_p0", 
+                            height = 425,width = 670,
+                            click = "plot1_p0_click",
+                            hover = hoverOpts("plot1_p0_hover", delay = 100, delayType = "debounce")
+                 ),
+                 uiOutput("hover_info_p0"),
+                 hr(),
+                 downloadButton("downloadPlot_p0","Download Heatmap (PNG)")
+          )
+      ),
+      box(width = 10,height=675,title = "FPKM Boxplot", status = "info", solidHeader = TRUE,
+          column(width=12,
+                 plotOutput("heat_boxplot_p0")
+          ),
+          column(width=12,
+                 br(),br(),br(),br(),
+                 uiOutput("Heat_slider_p0"),
+                 downloadButton("heat_box_p0","Download Boxplot (PNG)")
+          )
+      )
+      )
+    )
+  })
+  
+  Heat_boxplot_data_p0 <- reactive({
+    s <- make_heat_p0()
+    sub <- genefinder_data_p0[as.numeric(s),]
+    my_scale <- input$transform_p0
+    my_transform <- function(x,type){
+      switch(type,
+             "identity" = x,
+             "log10" = log10(x+1),
+             'log2' = logb(x+1,2)
+      )
+    }
+    sub1 <- data.frame(my_transform(as.numeric(sub[1,-1]),my_scale))
+    sub1$group <- rep(row.names(my_points),each=3)[-33]
+    names(sub1) <- c("FPKM","Group")
+    sub1$Group <- ordered(sub1$Group,levels=c("OES","FEC","Fibrous.Root","Storage.Root","RAM","SAM","Leaf","Lateral.Bud","Mid.Vein","Petiole","Stem"))
+    sub1$gene <- sub$gene
+    sub1
+  })
+  output$Heat_slider_p0 <- renderUI({
+    sub1 <- Heat_boxplot_data_p0()
+    mr <- diff(range(sub1$FPKM))
+    numericInput("box_yrange_p0", "Y-axis Max:", width="20%",
+                 value = max(sub1$FPKM)+0.5*mr)
+  })
+  Heat_boxplot_p0 <- reactive({
+    sub1 <- Heat_boxplot_data_p0()
+    mr <- diff(range(sub1$FPKM))
+    my_scale <- input$transform_p0
+    maxval <- input$box_yrange_p0
+    minval <- max(c(0,min(sub1$FPKM,na.rm=T)-0.5*mr))
+    ggplot(sub1, aes(x=Group, y=FPKM,fill=Group))+
+      ggtitle(paste(sub1$gene[1],": FPKM Distribution"))+
+      geom_boxplot(size=1,fatten=0) + 
+      theme_bw()+ 
+      theme(axis.text.x=element_text(angle=45, hjust=1), legend.position="none")  + 
+      coord_cartesian(ylim = c(minval,maxval))+
+      ylab(paste(my_scale,"FPKM"))+
+      xlab("Tissue Type")+
+      theme(axis.text = element_text(size = 14),
+            axis.title= element_text(size = 18))+
+      scale_fill_manual(values=c("#33a02c","#b2df8a","#1f78b4","#a6cee3","#6a3d9a","#cab2d6","#ffff99","#ff7f00","#fdbf6f","#e31a1c","#fb9a99"))
+  })
+  output$heat_boxplot_p0 <- renderPlot(height=500,{
+    Heat_boxplot_p0()
+  })
+  
+  output$heat_box_p0 <- downloadHandler(
+    filename = function() {paste(heatName_p0(),'-Boxplot', '.png', sep='')},
+    content=function(file){
+      png(file,height = 500,width = 670)
+      print(Heat_boxplot_p0())
+      dev.off()
+    },
+    contentType='image/png'
+  )
+  
+  Plot1_p0 <- reactive({
+    s <- make_heat_p0()
+    sub <- rnaseq_p0[as.numeric(s),]
+    my_scale <- input$transform_p0
+    my_transform <- function(x,type){
+      switch(type,
+             "identity" = x,
+             "log10" = log10(x+1),
+             'log2' = logb(x+1,2)
+      )}
+    hr()
+    sub[1,2:12] <- my_transform(as.numeric(sub[1,2:12]),my_scale)
+    top <- input$scale_max_p0
+    if(suppressWarnings(is.na(as.numeric(top)))){
+      top <- max(as.numeric(sub[1,2:12]))+1
+    }
+    for(i in 2:12){
+      if(sub[1,i] > as.numeric(top)){
+        sub[1,i] <- as.numeric(top)
+      }
+    }
+    my_col <- input$color_sel_p0
+    ggplot(data = starting_points, aes(X1, X2)) +
+      ggtitle(paste('\n',sub$gene,": Tissue-Specific Gene Expression"))+
+      scale_x_continuous(limits=c(0,1))+
+      scale_y_continuous(limits=c(0,1))+
+      theme(axis.line=element_blank(),axis.text.x=element_blank(),
+            axis.text.y=element_blank(),axis.ticks=element_blank(),
+            axis.title.x=element_blank(),
+            axis.title.y=element_blank(),panel.background=element_blank(),
+            panel.border=element_blank(),panel.grid.major=element_blank(),
+            panel.grid.minor=element_blank(),plot.background=element_blank())+
+      annotation_custom(rtest)+
+      scale_colour_gradient(low='black',high=my_col,paste(my_scale,"FPKM"),limits=c(0, as.numeric(input$scale_max_p0)))+
+      geom_point(data=my_points,aes(X1,X2,colour=as.numeric(sub[1,2:length(sub)])),size=6)
+  })
+  
+  output$plot1_p0 <- renderPlot({
+    Plot1_p0()
+  })
+  
+  output$downloadPlot_p0 <- downloadHandler(
+    filename = function() {paste(heatName_p0(),'-heatmap', '.png', sep='')},
+    content=function(file){
+      png(file,height = 425,width = 670)
+      print(Plot1_p0())
+      dev.off()
+    },
+    contentType='image/png'
+  )
+  
+  output$hover_info_p0 <- renderUI({
+    hover <- input$plot1_p0_hover
+    point <- nearPoints(my_points, hover, threshold = 10, maxpoints = 1, addDist = TRUE)
+    if (nrow(point) == 0) return(NULL)
+    left_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
+    top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
+    
+    # calculate distance from left and bottom side of the picture in pixels
+    left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
+    top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
+    
+    # create style property fot tooltipleft_pct <- (hover$x - hover$domain$left) / (hover$domain$right - hover$domain$left)
+    top_pct <- (hover$domain$top - hover$y) / (hover$domain$top - hover$domain$bottom)
+    
+    # calculate distance from left and bottom side of the picture in pixels
+    left_px <- hover$range$left + left_pct * (hover$range$right - hover$range$left)
+    top_px <- hover$range$top + top_pct * (hover$range$bottom - hover$range$top)
+    
+    style <- paste0("position:absolute; z-index:100; background-color: rgba(245, 245, 245, 0.85); ",
+                    "left:", left_px + 20, "px; top:", top_px +20, "px;")
+    
+    s <- make_heat_p0()
+    sub1 <- rnaseq_p0[as.numeric(s),]
+    my_scale <- input$transform_p0
+    my_transform <- function(x,type){
+      switch(type,
+             "identity" = x,
+             "log10" = log10(x+1),
+             'log2' = logb(x+1,2)
+      )
+    }
+    sub1[1,2:12] <- my_transform(as.numeric(sub1[1,2:12]),my_scale)
+    
+    # actual tooltip created as wellPanel
+    wellPanel(
+      style = style,
+      p(HTML(signif(sub1[,rownames(point)],4)))
+    )
+  })
+  
+  output$downloadHeatFPKM_p0 <- downloadHandler(
+    filename = function() {paste(heatName_p0(),'-FPKM','.csv', sep='')},
+    content=function(file){
+      s <- make_heat_p0()
+      sub1 <- genefinder_data1_p0[as.numeric(s),]
+      write.csv(sub1, file,row.names = F)
+    }
+  )
+  
+  output$get_all_data_p0 <- downloadHandler(
+    filename = function() {paste(paste(as.character(sapply(strsplit(gene_search_p0(),",")[[1]],function(i){gsub("^\\s+|\\s+$", "", i)})),collapse = "-"),'-Heatmap-All-Data.csv',sep = '')},
+    content=function(file){
+      s <- heat_sub_data_p0()
+      sub1 <- genefinder_data1_p0[as.numeric(s$index),]
+      write.csv(sub1, file,row.names = F)
+    }
+  )
+  
+  heatName_p0 <- reactive({
+    s <- make_heat_p0()
+    sub <- rnaseq_p0[as.numeric(s),]
+    return(sub$gene)
+  })
+  
+  gene_search_p0 <- eventReactive(input$gene_search_button_p0,{
+    input$gene_search_text_p0 
+  })
+  
+  heat_sub_data_p0 <- eventReactive(input$gene_search_button_p0,{
+    s <- gene_search_p0()
+    s <- sapply(strsplit(s,",")[[1]],function(i){gsub("^\\s+|\\s+$", "", i)})
+    my_logic <- data.frame(sapply(s,function(i){
+      if(i == ""){
+        return()
+      }else if(str_detect(i,"GO:")==T){
+        str_detect(annot_p0$go,i)
+      }else if(str_detect(i,"tme7p0_")==T){
+        str_detect(annot_p0$gene,i)
+      }else{
+        str_detect(tolower(annot_p0$annot),tolower(i))
+      }
+    }))
+    if(input$heat_radio_p0 == "AND"){
+      sub <- annot_p0[rowSums(my_logic)==length(s),]
+    }else{
+      sub <- annot_p0[rowSums(my_logic) > 0,]
+    }
+    return(sub)
+  })
+  
+  output$gene_search_table_p0 <- renderDataTable({
+    sub <- heat_sub_data_p0()
+    test <- gsub(":","%3A",as.character(sub[,3]))
+    test <- gsub("-","..",test)
+    #test <- sapply(test,function(i) paste("<a target='_blank' href='https://phytozome.jgi.doe.gov/jbrowse/index.html?data=genomes%2FMesculenta%2F&loc=",i,"&tracks=Transcripts%2CAlt_Transcripts%2CPASA_assembly%2CBlastx_protein%2CBlatx_Plant_protein&highlight='>","View in Phytozome","</a>",sep = ""))
+    #sub[,3] <- test
+    
+    datatable(sub,selection = 'single',rownames = F,escape = F,options = list(sDom  = '<"top">lrt<"bottom">ip')) %>% 
+      formatStyle('status',  backgroundColor = styleEqual(c("FALSE","TRUE"),c("green","orange")),color = styleEqual(c("FALSE","TRUE"),c("green","orange")),fontWeight = 'bold')
+    
+  },server = T)
   
   
   #********************************************************************************************************************
