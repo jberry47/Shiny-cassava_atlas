@@ -815,7 +815,6 @@ server <- function(input, output) {
                  hr(),
                  textInput("scale_max_p0","Scale Max",value="",width = 100)
              )
-             ,
       ),
       column(8,
              box(style = "overflow-y:scroll",width=10,title = "Tissue Specific Expression", status = "info", solidHeader = TRUE,
